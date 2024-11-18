@@ -1,0 +1,5 @@
+# ninja log v6
+2	310	7536108431805979	build.ninja	5e905f1106832746
+25	620	7536108432835974	CMakeFiles/Hamming.dir/main.cpp.obj	8632840afa7b935
+36	680	7536108432945971	CMakeFiles/Hamming.dir/hamming.cpp.obj	7db5bb2925076bd2
+680	841	7536108439386019	Hamming.exe	fd913e822757fa6d
