@@ -1,6 +1,8 @@
 #include "hammingx.h"
 #include <iostream>
 #include <cmath>
+#include <cstdlib>
+#include <ctime>
 
 // Function to calculate the number of parity bits needed
 int calculateParityBits(int dataBits) {
@@ -43,20 +45,22 @@ std::vector<int> generateHammingCode(const std::vector<int>& data) {
     return hammingCode;
 }
 
-// Function to inject an error at a given position
-void injectError(std::vector<int>& hammingCode, int position) {
-    if (position > 0 && position <= hammingCode.size()) {
-        hammingCode[position - 1] ^= 1; // Flip the bit
-        std::cout << "Injected error at position " << position << "." << std::endl;
+// Function to inject random errors into some data sets
+void injectRandomErrors(std::vector<std::vector<int>>& dataSet, int numErrors) {
+    std::srand(std::time(0)); // Seed for randomness
+    for (int i = 0; i < numErrors; i++) {
+        int setIndex = std::rand() % dataSet.size();
+        int bitIndex = std::rand() % dataSet[setIndex].size();
+        dataSet[setIndex][bitIndex] ^= 1; // Flip the bit to create an error
     }
 }
 
 // Function to detect and correct errors in the Hamming code
-void detectAndCorrectError(std::vector<int>& hammingCode) {
+int detectAndCorrectError(std::vector<int>& hammingCode) {
     int n = hammingCode.size();
     int errorPosition = 0;
 
-    // Calculate the syndrome
+    // Calcula el síndrome
     for (int i = 0; i < std::log2(n) + 1; i++) {
         int position = (1 << i);
         int parity = 0;
@@ -70,7 +74,7 @@ void detectAndCorrectError(std::vector<int>& hammingCode) {
         }
     }
 
-    // Correct the error if found
+    // Corrige el error si se detecta
     if (errorPosition != 0) {
         std::cout << "Error detected at position: " << errorPosition << std::endl;
         hammingCode[errorPosition - 1] ^= 1;
@@ -78,7 +82,10 @@ void detectAndCorrectError(std::vector<int>& hammingCode) {
     } else {
         std::cout << "No error detected.\n";
     }
+
+    return errorPosition; // Devuelve la posición del error (o 0 si no hay error)
 }
+
 
 // Function to display the code
 void displayCode(const std::vector<int>& code) {
@@ -87,12 +94,3 @@ void displayCode(const std::vector<int>& code) {
     }
     std::cout << std::endl;
 }
-
-// Function to analyze results and compare original and corrected code
-void analyzeResults(const std::vector<int>& original, const std::vector<int>& corrected) {
-    std::cout << "Original code: ";
-    displayCode(original);
-    std::cout << "Corrected code: ";
-    displayCode(corrected);
-}
-
