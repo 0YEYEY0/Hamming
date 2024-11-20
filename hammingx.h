@@ -1,14 +1,32 @@
-#ifndef HAMMING_H
-#define HAMMING_H
+#ifndef HAMMINGX_H
+#define HAMMINGX_H
 
 #include <vector>
+#include <string>
+#include <map>
 
-// Function declarations
+// Estructura para representar un bloque de datos
+struct Block {
+    std::vector<int> data;         // Datos originales
+    std::vector<int> compressed;  // Datos comprimidos
+    std::vector<int> hamming;     // Código Hamming generado
+    std::vector<int> received;    // Datos recibidos (con posibles errores)
+    std::vector<int> checksum;    // Checksum adicional
+    bool hasError = false;        // Indica si el bloque tiene errores
+    int errorPosition = 0;        // Posición del error detectado (si aplica)
+    bool retransmitted = false;   // Indica si el bloque fue retransmitido
+};
+
+// Prototipos de funciones
 int calculateParityBits(int dataBits);
-std::vector<int> generateHammingCode(const std::vector<int>& data);
-void injectRandomErrors(std::vector<std::vector<int>>& dataSet, int numErrors);
-int detectAndCorrectError(std::vector<int>& hammingCode);
-void displayCode(const std::vector<int>& code);
+std::vector<int> compressData(const std::vector<int>& data);
+std::vector<int> generateRandomData(int size);
+std::vector<int> encodeHamming(const std::vector<int>& data);
+std::vector<int> generateChecksum(const std::vector<int>& data);
+int detectAndCorrect(std::vector<int>& hammingCode);
+Block createBlock(int dataSize);
+void introduceError(Block& block, double errorProb);
+void visualizeBlock(const Block& block, int blockNumber);
+std::map<std::string, int> calculateStatistics(const std::vector<Block>& blocks);
 
-#endif // HAMMING_H
-
+#endif // HAMMINGX_H
