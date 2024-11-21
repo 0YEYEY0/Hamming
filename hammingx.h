@@ -29,4 +29,9 @@ void introduceError(Block& block, double errorProb);
 void visualizeBlock(const Block& block, int blockNumber);
 std::map<std::string, int> calculateStatistics(const std::vector<Block>& blocks);
 
+// Funcionalidades nuevas
+std::map<std::string, double> analyzePerformance(const std::vector<Block>& blocks);
+void processBlockWithVisualization(Block& block, int blockNumber, double errorProb);
+void runTests();
+
 #endif // HAMMINGX_H

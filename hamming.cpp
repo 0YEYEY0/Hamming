@@ -2,8 +2,9 @@
 #include <iostream>
 #include <vector>
 #include <random>
-#include <bitset>
 #include <map>
+#include <cmath>
+#include <iomanip>
 
 // Calcular el número de bits de paridad necesarios
 int calculateParityBits(int dataBits) {
@@ -52,7 +53,6 @@ void introduceError(Block& block, double errorProb) {
     std::mt19937 gen(rd());
     std::uniform_real_distribution<> dis(0.0, 1.0);
 
-    // Introducir múltiples errores si el valor aleatorio es menor que la probabilidad de error
     for (int i = 0; i < block.hamming.size(); ++i) {
         if (dis(gen) < errorProb) {
             block.hamming[i] ^= 1; // Cambiar un bit al azar
@@ -62,26 +62,31 @@ void introduceError(Block& block, double errorProb) {
     }
 }
 
-// Visualizar un bloque de datos
-void visualizeBlock(const Block& block, int blockNumber) {
-    std::cout << "Bloque " << blockNumber << ":\n";
-    std::cout << "Datos Originales: ";
-    for (int bit : block.data) {
-        std::cout << bit;
+// Detectar y corregir errores en el código Hamming
+int detectAndCorrect(std::vector<int>& hammingCode) {
+    int n = hammingCode.size();
+    int errorPosition = 0;
+
+    // Verificar los bits de paridad y detectar errores
+    for (int i = 0; i < std::log2(n) + 1; i++) {
+        int position = (1 << i);
+        int parity = 0;
+        for (int j = 0; j < n; j++) {
+            if ((j + 1) & position) {
+                parity ^= hammingCode[j];
+            }
+        }
+        if (parity != 0) {
+            errorPosition += position;
+        }
     }
-    std::cout << "\nCódigo Hamming: ";
-    for (int bit : block.hamming) {
-        std::cout << bit;
+
+    // Corregir el error si es necesario
+    if (errorPosition != 0) {
+        hammingCode[errorPosition - 1] ^= 1;
     }
-    std::cout << "\nDatos Recibidos: ";
-    for (int bit : block.received) {
-        std::cout << bit;
-    }
-    std::cout << "\nChecksum: ";
-    for (int bit : block.checksum) {
-        std::cout << bit;
-    }
-    std::cout << "\n\n";
+
+    return errorPosition;
 }
 
 // Crear un bloque de datos con un tamaño dado
@@ -112,45 +117,102 @@ std::vector<int> generateChecksum(const std::vector<int>& data) {
     return checksum;
 }
 
-// Detectar y corregir errores en el código Hamming
-int detectAndCorrect(std::vector<int>& hammingCode) {
-    int n = hammingCode.size();
-    int errorPosition = 0;
-
-    // Verificar los bits de paridad y detectar errores
-    for (int i = 0; i < std::log2(n) + 1; i++) {
-        int position = (1 << i);
-        int parity = 0;
-        for (int j = 0; j < n; j++) {
-            if ((j + 1) & position) {
-                parity ^= hammingCode[j];
-            }
-        }
-        if (parity != 0) {
-            errorPosition += position;
-        }
+// Visualizar un bloque de datos con comparaciones claras
+void visualizeBlock(const Block& block, int blockNumber) {
+    std::cout << "===== BLOQUE " << blockNumber << " =====\n";
+    std::cout << "Datos Originales:     ";
+    for (int bit : block.data) {
+        std::cout << bit;
     }
-
-    // Corregir el error si es necesario
-    if (errorPosition != 0) {
-        hammingCode[errorPosition - 1] ^= 1;
+    std::cout << "\nCodigo Hamming:       ";
+    for (int bit : block.hamming) {
+        std::cout << bit;
     }
-
-    return errorPosition;
+    std::cout << "\nDatos con Errores:    ";
+    for (int bit : block.received) {
+        std::cout << bit;
+    }
+    std::cout << "\nCodigo Corregido:     ";
+    for (int bit : block.hamming) {
+        std::cout << bit;
+    }
+    std::cout << "\nChecksum:             ";
+    for (int bit : block.checksum) {
+        std::cout << bit;
+    }
+    std::cout << "\n========================\n\n";
 }
 
-// Calcular estadísticas de un conjunto de bloques
-std::map<std::string, int> calculateStatistics(const std::vector<Block>& blocks) {
-    std::map<std::string, int> stats;
+// Calcular la tasa de corrección y probabilidad de error residual
+std::map<std::string, double> analyzePerformance(const std::vector<Block>& blocks) {
     int totalErrors = 0;
-    int totalRetransmitted = 0;
+    int correctedErrors = 0;
+    int residualErrors = 0;
 
     for (const auto& block : blocks) {
-        if (block.hasError) totalErrors++;
-        if (block.retransmitted) totalRetransmitted++;
+        if (block.hasError) {
+            totalErrors++;
+            if (block.errorPosition != 0) {
+                correctedErrors++;
+            } else {
+                residualErrors++;
+            }
+        }
     }
 
+    double correctionRate = (totalErrors > 0) ? (correctedErrors * 100.0 / totalErrors) : 100.0;
+    double residualErrorRate = (blocks.size() > 0) ? (residualErrors * 100.0 / blocks.size()) : 0.0;
 
-
-    return stats;
+    return {
+            {"Total Errors Detected", totalErrors},
+            {"Correction Rate (%)", correctionRate},
+            {"Residual Error Rate (%)", residualErrorRate}
+    };
 }
+
+// Crear y procesar un bloque individual
+void processBlockWithVisualization(Block& block, int blockNumber, double errorProb) {
+    block.hamming = encodeHamming(block.data);
+    block.received = block.hamming;
+    introduceError(block, errorProb);
+    block.errorPosition = detectAndCorrect(block.hamming);
+    block.checksum = generateChecksum(block.hamming);
+    visualizeBlock(block, blockNumber);
+}
+
+// Realizar pruebas con diferentes tamaños y tasas de error
+void runTests() {
+    std::vector<int> dataSizes = {16, 32, 64};  // Tamaños de datos en bits
+    std::vector<double> errorRates = {0.1, 0.3, 0.5}; // Tasas de error
+
+    for (int size : dataSizes) {
+        for (double rate : errorRates) {
+            std::cout << "== Prueba: Tamano de Datos = " << size
+                      << ", Tasa de Error = " << (rate * 100) << "% ==\n";
+
+            std::vector<Block> testBlocks;
+            int numBlocks = 5;
+
+            for (int i = 0; i < numBlocks; ++i) {
+                Block block = createBlock(size);
+                processBlockWithVisualization(block, i + 1, rate);
+                testBlocks.push_back(block);
+            }
+
+            // Asegurar que el encabezado se imprime independientemente de los bloques
+            if (testBlocks.empty()) {
+                std::cout << "No se generaron bloques para esta configuracion.\n";
+            }
+
+            // Analizar el rendimiento
+            std::map<std::string, double> performance = analyzePerformance(testBlocks);
+            std::cout << "=== Resultados de la Prueba ===\n";
+            for (const auto& stat : performance) {
+                std::cout << stat.first << ": " << std::fixed << std::setprecision(2)
+                          << stat.second << "\n";
+            }
+            std::cout << "==============================\n\n";
+        }
+    }
+}
+
