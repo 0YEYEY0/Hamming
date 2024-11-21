@@ -5,6 +5,8 @@
 #include <map>
 #include <cmath>
 #include <iomanip>
+#include <chrono>
+#include <thread>
 
 // Calcular el número de bits de paridad necesarios
 int calculateParityBits(int dataBits) {
@@ -170,7 +172,7 @@ std::map<std::string, double> analyzePerformance(const std::vector<Block>& block
     };
 }
 
-// Crear y procesar un bloque individual
+// Crear y procesar un bloque individual con una pausa de 1 segundo entre bloques
 void processBlockWithVisualization(Block& block, int blockNumber, double errorProb) {
     block.hamming = encodeHamming(block.data);
     block.received = block.hamming;
@@ -178,6 +180,9 @@ void processBlockWithVisualization(Block& block, int blockNumber, double errorPr
     block.errorPosition = detectAndCorrect(block.hamming);
     block.checksum = generateChecksum(block.hamming);
     visualizeBlock(block, blockNumber);
+
+    // Pausa de 1 segundo entre bloques para permitir la visualización
+    std::this_thread::sleep_for(std::chrono::seconds(1));
 }
 
 // Realizar pruebas con diferentes tamaños y tasas de error
@@ -187,7 +192,7 @@ void runTests() {
 
     for (int size : dataSizes) {
         for (double rate : errorRates) {
-            std::cout << "== Prueba: Tamano de Datos = " << size
+            std::cout << "== Prueba: Tamaño de Datos = " << size
                       << ", Tasa de Error = " << (rate * 100) << "% ==\n";
 
             std::vector<Block> testBlocks;
@@ -201,7 +206,7 @@ void runTests() {
 
             // Asegurar que el encabezado se imprime independientemente de los bloques
             if (testBlocks.empty()) {
-                std::cout << "No se generaron bloques para esta configuracion.\n";
+                std::cout << "No se generaron bloques para esta configuración.\n";
             }
 
             // Analizar el rendimiento
