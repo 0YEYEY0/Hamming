@@ -52,12 +52,14 @@ build cmake_object_order_depends_target_Hamming: phony || .
 build CMakeFiles/Hamming.dir/main.cpp.obj: CXX_COMPILER__Hamming_unscanned_Debug C$:/Users/XPC}/CLionProjects/Hamming/main.cpp || cmake_object_order_depends_target_Hamming
   DEP_FILE = CMakeFiles\Hamming.dir\main.cpp.obj.d
   FLAGS = -g -std=gnu++20 -fdiagnostics-color=always
+  INCLUDES = -IC:/Users/XPC}/CLionProjects/Hamming
   OBJECT_DIR = CMakeFiles\Hamming.dir
   OBJECT_FILE_DIR = CMakeFiles\Hamming.dir
 
 build CMakeFiles/Hamming.dir/hamming.cpp.obj: CXX_COMPILER__Hamming_unscanned_Debug C$:/Users/XPC}/CLionProjects/Hamming/hamming.cpp || cmake_object_order_depends_target_Hamming
   DEP_FILE = CMakeFiles\Hamming.dir\hamming.cpp.obj.d
   FLAGS = -g -std=gnu++20 -fdiagnostics-color=always
+  INCLUDES = -IC:/Users/XPC}/CLionProjects/Hamming
   OBJECT_DIR = CMakeFiles\Hamming.dir
   OBJECT_FILE_DIR = CMakeFiles\Hamming.dir
 
@@ -71,7 +73,7 @@ build CMakeFiles/Hamming.dir/hamming.cpp.obj: CXX_COMPILER__Hamming_unscanned_De
 
 build Hamming.exe: CXX_EXECUTABLE_LINKER__Hamming_Debug CMakeFiles/Hamming.dir/main.cpp.obj CMakeFiles/Hamming.dir/hamming.cpp.obj
   FLAGS = -g
-  LINK_LIBRARIES = -lkernel32 -luser32 -lgdi32 -lwinspool -lshell32 -lole32 -loleaut32 -luuid -lcomdlg32 -ladvapi32
+  LINK_LIBRARIES = -lWs2_32  -lkernel32 -luser32 -lgdi32 -lwinspool -lshell32 -lole32 -loleaut32 -luuid -lcomdlg32 -ladvapi32
   OBJECT_DIR = CMakeFiles\Hamming.dir
   POST_BUILD = cd .
   PRE_LINK = cd .

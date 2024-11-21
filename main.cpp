@@ -1,88 +1,83 @@
 #include "hammingx.h"
 #include <iostream>
-#include <fstream>
 #include <vector>
-#include <map>
-#include <iomanip>
 #include <cstdlib>
 #include <ctime>
+#include <thread>
+#include <chrono>
 
-// Configuración de la simulación
-const int DATA_SIZE = 16;         // Tamaño de datos por bloque
-const int NUM_BLOCKS = 10;        // Número total de bloques
-const double ERROR_PROB = 0.3;    // Probabilidad de error por bloque
-const std::string OUTPUT_FILE = "simulation_results.txt";
+// Simula el proceso de recibir bloques de datos, verificando errores y estadísticas
+void processBlock(Block& block, int blockNumber) {
+    // Generar código Hamming para los datos
+    block.hamming = encodeHamming(block.data);
 
-void saveBlocksToFile(const std::vector<Block>& blocks, const std::string& filename) {
-    std::ofstream file(filename);
-    if (!file.is_open()) {
-        std::cerr << "Error al abrir el archivo de salida.\n";
-        return;
+    // Visualiza el bloque antes de procesarlo
+    std::cout << "Datos Originales del Bloque " << blockNumber << ": ";
+    for (int bit : block.data) {
+        std::cout << bit;
     }
+    std::cout << "\nCodigo Hamming Original: ";
+    for (int bit : block.hamming) {
+        std::cout << bit;
+    }
+    std::cout << "\n";
 
-    file << "Simulación de Codificación Hamming\n";
-    file << "===================================\n";
-    for (size_t i = 0; i < blocks.size(); ++i) {
-        file << "\n--- Block " << i + 1 << " ---\n";
-        file << "Original Data: ";
-        for (int bit : blocks[i].data) file << bit;
-        file << "\nCompressed Data: ";
-        for (int bit : blocks[i].compressed) file << bit;
-        file << "\nHamming Code:    ";
-        for (int bit : blocks[i].hamming) file << bit;
-        file << "\nReceived Data:   ";
-        for (int bit : blocks[i].received) file << bit;
-        file << "\nChecksum:        ";
-        for (int bit : blocks[i].checksum) file << bit;
-        if (blocks[i].hasError) {
-            file << "\nError Detected at Position: " << blocks[i].errorPosition;
-        } else {
-            file << "\nNo Errors Detected.";
+    // Introducir errores aleatorios con una probabilidad
+    introduceError(block, 0.3); // Probabilidad de 30% de error por bit
+
+    // Visualizar el bloque con errores introducidos
+    std::cout << "Bloque con Errores Introducidos: ";
+    for (int bit : block.hamming) {
+        std::cout << bit;
+    }
+    std::cout << "\n";
+
+    // Detectar y corregir errores en el código Hamming
+    std::vector<int> originalHamming = block.hamming; // Guardamos la versión original para comparaciones
+    block.errorPosition = detectAndCorrect(block.hamming);
+
+    if (block.errorPosition != 0) {
+        block.hasError = true;
+        std::cout << "Errores detectados y corregidos en las siguientes posiciones: ";
+        for (int i = 0; i < block.hamming.size(); ++i) {
+            if (originalHamming[i] != block.hamming[i]) {
+                std::cout << i + 1 << " "; // Imprimir las posiciones corregidas
+            }
         }
-        file << "\n";
+        std::cout << "\n";
+    } else {
+        std::cout << "No se detectaron errores.\n";
     }
-    file.close();
-    std::cout << "Resultados guardados en: " << filename << "\n";
+
+    // Visualizar el bloque después de la corrección
+    std::cout << "Bloque despues de correccion: ";
+    for (int bit : block.hamming) {
+        std::cout << bit;
+    }
+    std::cout << "\n";
+
+    // Generar un checksum para el bloque
+    block.checksum = generateChecksum(block.hamming);
+
+    // Mostrar las estadísticas del bloque
+    std::map<std::string, int> stats = calculateStatistics({block});
+    std::cout << "Estadisticas del Bloque " << blockNumber << ":\n";
+    for (const auto& stat : stats) {
+        std::cout << stat.first << ": " << stat.second << "\n";
+    }
+    std::cout << "\n";
 }
 
 int main() {
-    // Inicializar el generador de números aleatorios
-    std::srand(std::time(0));
+    std::srand(std::time(0)); // Semilla para la generación de números aleatorios
 
-    // Crear bloques de datos
-    std::vector<Block> blocks;
-    for (int i = 0; i < NUM_BLOCKS; ++i) {
-        blocks.push_back(createBlock(DATA_SIZE));
-    }
+    int numBlocks = 5; // Número de bloques a procesar
 
-    // Introducir errores en los bloques
-    for (auto& block : blocks) {
-        introduceError(block, ERROR_PROB);
-    }
-
-    // Detectar y corregir errores en cada bloque
-    for (auto& block : blocks) {
-        if (block.hasError) {
-            block.errorPosition = detectAndCorrect(block.received);
-            if (block.errorPosition != 0) {
-                block.retransmitted = true; // Marcar el bloque como retransmitido
-            }
-        }
-    }
-
-    // Mostrar información detallada de cada bloque
-    for (size_t i = 0; i < blocks.size(); ++i) {
-        visualizeBlock(blocks[i], static_cast<int>(i + 1));
-    }
-
-    // Guardar los resultados en un archivo
-    saveBlocksToFile(blocks, OUTPUT_FILE);
-
-    // Calcular estadísticas
-    std::map<std::string, int> stats = calculateStatistics(blocks);
-    std::cout << "\n--- Estadísticas de la Simulación ---\n";
-    for (const auto& stat : stats) {
-        std::cout << std::setw(20) << std::left << stat.first << ": " << stat.second << "\n";
+    // Crear y procesar bloques de datos
+    for (int i = 1; i <= numBlocks; ++i) {
+        Block block = createBlock(64); // Crear bloque de datos con tamaño de 64 bits
+        processBlock(block, i);        // Procesar el bloque
+        std::this_thread::sleep_for(std::chrono::seconds(1)); // Espera para simular el tiempo de procesamiento
     }
 
     return 0;

@@ -1,13 +1,11 @@
 #include "hammingx.h"
 #include <iostream>
 #include <vector>
-#include <cstdlib>
-#include <ctime>
-#include <cmath>
-#include <sstream>
-#include <iomanip>
+#include <random>
+#include <bitset>
+#include <map>
 
-// Calcular el número de bits de paridad necesarios para el código Hamming
+// Calcular el número de bits de paridad necesarios
 int calculateParityBits(int dataBits) {
     int r = 0;
     while ((1 << r) < (dataBits + r + 1)) {
@@ -16,40 +14,25 @@ int calculateParityBits(int dataBits) {
     return r;
 }
 
-// Comprimir datos simulando compresión básica (reducir tamaño)
-std::vector<int> compressData(const std::vector<int>& data) {
-    std::vector<int> compressed;
-    for (size_t i = 0; i < data.size(); i += 2) {
-        int compressedBit = (data[i] + (i + 1 < data.size() ? data[i + 1] : 0)) % 2;
-        compressed.push_back(compressedBit);
-    }
-    return compressed;
-}
-
-// Generar un conjunto de datos aleatorios
-std::vector<int> generateRandomData(int size) {
-    std::vector<int> data(size);
-    for (int& bit : data) {
-        bit = std::rand() % 2;
-    }
-    return data;
-}
-
-// Codificar datos usando el código Hamming
+// Generar código Hamming para los datos de entrada
 std::vector<int> encodeHamming(const std::vector<int>& data) {
     int m = data.size();
     int r = calculateParityBits(m);
     int n = m + r;
-    std::vector<int> hammingCode(n, 0);
 
+    std::vector<int> hammingCode(n, 0);
     int j = 0;
+
+    // Insertar los bits de datos en las posiciones del código Hamming
     for (int i = 0; i < n; i++) {
-        if ((i + 1) & (i)) { // Evitar posiciones de paridad
-            hammingCode[i] = data[j++];
+        if ((i + 1) && ((i + 1) & i) == 0) {
+            continue; // Posición de bit de paridad
         }
+        hammingCode[i] = data[j++];
     }
 
-    for (int i = 0; (1 << i) <= n; i++) { // Calcular bits de paridad
+    // Calcular los bits de paridad
+    for (int i = 0; i < r; i++) {
         int position = (1 << i);
         int parity = 0;
         for (int j = 0; j < n; j++) {
@@ -63,13 +46,69 @@ std::vector<int> encodeHamming(const std::vector<int>& data) {
     return hammingCode;
 }
 
-// Generar checksum adicional para validar datos
-std::vector<int> generateChecksum(const std::vector<int>& data) {
-    std::vector<int> checksum(2, 0); // Checksum de 2 bits
-    for (size_t i = 0; i < data.size(); i++) {
-        checksum[0] ^= (i % 2 == 0) ? data[i] : 0;
-        checksum[1] ^= (i % 2 != 0) ? data[i] : 0;
+// Introducir errores aleatorios en un bloque de datos con una probabilidad dada
+void introduceError(Block& block, double errorProb) {
+    std::random_device rd;
+    std::mt19937 gen(rd());
+    std::uniform_real_distribution<> dis(0.0, 1.0);
+
+    // Introducir múltiples errores si el valor aleatorio es menor que la probabilidad de error
+    for (int i = 0; i < block.hamming.size(); ++i) {
+        if (dis(gen) < errorProb) {
+            block.hamming[i] ^= 1; // Cambiar un bit al azar
+            block.hasError = true;
+            std::cout << "Error en la posicion: " << i + 1 << "\n";
+        }
     }
+}
+
+// Visualizar un bloque de datos
+void visualizeBlock(const Block& block, int blockNumber) {
+    std::cout << "Bloque " << blockNumber << ":\n";
+    std::cout << "Datos Originales: ";
+    for (int bit : block.data) {
+        std::cout << bit;
+    }
+    std::cout << "\nCódigo Hamming: ";
+    for (int bit : block.hamming) {
+        std::cout << bit;
+    }
+    std::cout << "\nDatos Recibidos: ";
+    for (int bit : block.received) {
+        std::cout << bit;
+    }
+    std::cout << "\nChecksum: ";
+    for (int bit : block.checksum) {
+        std::cout << bit;
+    }
+    std::cout << "\n\n";
+}
+
+// Crear un bloque de datos con un tamaño dado
+Block createBlock(int dataSize) {
+    Block block;
+    block.data = generateRandomData(dataSize);
+    block.received = block.data;
+    return block;
+}
+
+// Generar datos aleatorios de un tamaño dado
+std::vector<int> generateRandomData(int size) {
+    std::vector<int> data(size);
+    for (int i = 0; i < size; i++) {
+        data[i] = std::rand() % 2; // Generar 0 o 1 aleatoriamente
+    }
+    return data;
+}
+
+// Generar un checksum simple para el bloque de datos
+std::vector<int> generateChecksum(const std::vector<int>& data) {
+    std::vector<int> checksum;
+    int sum = 0;
+    for (int bit : data) {
+        sum += bit;
+    }
+    checksum.push_back(sum % 2);  // Simple checksum (paridad)
     return checksum;
 }
 
@@ -78,7 +117,8 @@ int detectAndCorrect(std::vector<int>& hammingCode) {
     int n = hammingCode.size();
     int errorPosition = 0;
 
-    for (int i = 0; (1 << i) <= n; i++) {
+    // Verificar los bits de paridad y detectar errores
+    for (int i = 0; i < std::log2(n) + 1; i++) {
         int position = (1 << i);
         int parity = 0;
         for (int j = 0; j < n; j++) {
@@ -91,67 +131,26 @@ int detectAndCorrect(std::vector<int>& hammingCode) {
         }
     }
 
+    // Corregir el error si es necesario
     if (errorPosition != 0) {
-        hammingCode[errorPosition - 1] ^= 1; // Corregir el error
+        hammingCode[errorPosition - 1] ^= 1;
     }
 
     return errorPosition;
 }
 
-// Crear un bloque de datos codificado
-Block createBlock(int dataSize) {
-    Block block;
-    block.data = generateRandomData(dataSize);
-    block.compressed = compressData(block.data);
-    block.hamming = encodeHamming(block.compressed);
-    block.checksum = generateChecksum(block.compressed);
-    block.received = block.hamming;
-    return block;
-}
-
-// Introducir errores aleatorios en un bloque
-void introduceError(Block& block, double errorProb) {
-    block.hasError = (std::rand() / static_cast<double>(RAND_MAX)) < errorProb;
-    if (block.hasError) {
-        int errorPosition = std::rand() % block.received.size();
-        block.received[errorPosition] ^= 1; // Flip del bit
-        block.errorPosition = errorPosition + 1; // Guardar posición de error
-    }
-}
-
-// Mostrar información detallada de un bloque
-void visualizeBlock(const Block& block, int blockNumber) {
-    std::cout << "\n--- Block " << blockNumber << " ---\n";
-    std::cout << "Original Data: ";
-    for (int bit : block.data) std::cout << bit;
-    std::cout << "\nCompressed Data: ";
-    for (int bit : block.compressed) std::cout << bit;
-    std::cout << "\nHamming Code:    ";
-    for (int bit : block.hamming) std::cout << bit;
-    std::cout << "\nReceived Data:   ";
-    for (int bit : block.received) std::cout << bit;
-    std::cout << "\nChecksum:        ";
-    for (int bit : block.checksum) std::cout << bit;
-    if (block.hasError) {
-        std::cout << "\nError Detected at Position: " << block.errorPosition;
-    } else {
-        std::cout << "\nNo Errors Detected.";
-    }
-    std::cout << "\n";
-}
-
-// Calcular estadísticas del proceso
+// Calcular estadísticas de un conjunto de bloques
 std::map<std::string, int> calculateStatistics(const std::vector<Block>& blocks) {
-    std::map<std::string, int> stats = {
-            {"Total Blocks", static_cast<int>(blocks.size())},
-            {"Errors Detected", 0},
-            {"Blocks Retransmitted", 0}
-    };
+    std::map<std::string, int> stats;
+    int totalErrors = 0;
+    int totalRetransmitted = 0;
 
     for (const auto& block : blocks) {
-        if (block.hasError) stats["Errors Detected"]++;
-        if (block.retransmitted) stats["Blocks Retransmitted"]++;
+        if (block.hasError) totalErrors++;
+        if (block.retransmitted) totalRetransmitted++;
     }
+
+
 
     return stats;
 }
